@@ -1,0 +1,19 @@
+<!-- myapp/templates/ocr_result.html -->
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>OCR Result</title>
+</head>
+<body>
+    <h1>OCR 결과</h1>
+    <p>{{ extracted_text }}</p>
+
+    <h2>Captured Image</h2>
+    {% if captured_image %}
+        <img src="{{ captured_image }}" alt="Captured Image">
+    {% else %}
+        <p>No image captured.</p>
+    {% endif %}
+</body>
+</html>

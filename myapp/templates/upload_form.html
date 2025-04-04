@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>OCR with Camera</title>
+</head>
+<body>
+    <h1>OCR with Camera</h1>
+    <video id="camera-preview" width="640" height="480" autoplay></video>
+    <button id="capture-button">Capture</button>
+    <canvas id="captured-image" width="640" height="480" style="display:none;"></canvas>
+    <form id="ocr-form" method="post" action="{% url 'ocr_view' %}">
+        {% csrf_token %}
+        <input type="hidden" id="image-data" name="image">
+    </form>
+
+    <script>
+        const video = document.getElementById('camera-preview');
+        const captureButton = document.getElementById('capture-button');
+        const canvas = document.getElementById('captured-image');
+        const ctx = canvas.getContext('2d');
+        const form = document.getElementById('ocr-form');
+        const imageDataInput = document.getElementById('image-data');
+
+        // 카메라 접근 권한 요청
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+                video.srcObject = stream;
+            })
+            .catch(error => {
+                console.error("카메라 접근 오류:", error);
+            });
+
+        captureButton.addEventListener('click', () => {
+            // 캔버스에 현재 카메라 화면 그리기
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            // 캔버스 이미지를 base64 데이터 URL로 변환
+            const imageBase64 = canvas.toDataURL('image/png');
+
+            // base64 데이터 URL을 hidden input 필드에 설정
+            imageDataInput.value = imageBase64;
+
+            // 폼 제출
+            form.submit();
+        });
+
+        // CSRF 토큰 가져오기 함수
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    // Does this cookie string begin with the name we want?
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        // 폼 제출 전에 CSRF 토큰 설정
+        form.addEventListener('submit', function(event) {
+            event.preventDefault(); // 기본 폼 제출 동작 막기
+
+            const xhr = new XMLHttpRequest();
+            xhr.open("POST", "{% url 'ocr_view' %}", true);
+            xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+            xhr.setRequestHeader("X-CSRFToken", getCookie('csrftoken')); // CSRF 토큰 설정
+
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    // 서버 응답 처리
+                    document.body.innerHTML = xhr.responseText; // OCR 결과 표시
+                } else {
+                    console.error("폼 제출 오류:", xhr.status);
+                }
+            };
+
+            xhr.onerror = function() {
+                console.error("폼 제출 오류");
+            };
+
+            xhr.send("image=" + encodeURIComponent(imageDataInput.value));
+        });
+    </script>
+</body>
+</html>
