@@ -1,0 +1,12 @@
+<h2>저장할 품목 선택</h2>
+<form method="post" action="{% url 'save_selected_items' %}">
+  {% csrf_token %}
+  <input type="hidden" name="receipt_id" value="{{ receipt_id }}">
+  {% for item in items %}
+    <label>
+      <input type="checkbox" name="selected_items" value="{{ item }}">
+      {{ item }}
+    </label><br>
+  {% endfor %}
+  <button type="submit">선택한 품목 저장</button>
+</form>

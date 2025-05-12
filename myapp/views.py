@@ -1,59 +1,79 @@
-import cv2
-import easyocr
-from django.shortcuts import render
-import numpy as np
 import base64
-from django.views.decorators.csrf import csrf_exempt
+import uuid
+import os
+from django.core.files import File
+from django.contrib.auth.decorators import login_required
+from .models import Receipt, Item
+from .utils import perform_naver_ocr
+from django.shortcuts import render
 
-
-def preprocess_image(image):
-    # 이미지 전처리 함수 (이전 답변 참조)
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
-    median = cv2.medianBlur(thresh, 3)
-    return median
-
-
-@csrf_exempt
-def ocr_view(request):
+@login_required
+def upload_receipt(request):
     if request.method == 'POST':
-        try:
-            # 캡쳐된 이미지가 base64 인코딩된 문자열 형태로 전송된다고 가정
-            image_data = request.POST.get('image')
+        image_data = request.POST.get('image_data')
+        if not image_data:
+            return render(request, 'upload_receipt.html', {'error': '이미지를 촬영해주세요.'})
 
-            # base64 문자열을 이미지로 디코딩
-            image_data_encoded = image_data  # 이미지 데이터 저장
+        # base64 데이터에서 실제 이미지 데이터 추출
+        format, imgstr = image_data.split(';base64,')
+        ext = format.split('/')[-1]
+        filename = f"{uuid.uuid4()}.{ext}"
+        file_path = os.path.join('media', 'receipts', filename)
 
-            image_data = image_data.split(',')[1]  # "data:image/png;base64," 제거
-            decoded_data = base64.b64decode(image_data)
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
 
-            # 디코딩된 데이터를 numpy array로 변환
-            np_data = np.frombuffer(decoded_data, np.uint8)
+        with open(file_path, 'wb') as f:
+            f.write(base64.b64decode(imgstr))
 
-            # numpy array를 OpenCV 이미지로 변환
-            image = cv2.imdecode(np_data, cv2.IMREAD_COLOR)
+        # Receipt 모델에 저장
+        with open(file_path, 'rb') as f:
+            receipt = Receipt.objects.create(user=request.user)
+            receipt.image.save(filename, File(f), save=True)
 
-            # 이미지 전처리
-            preprocessed_image = preprocess_image(image)
+        # OCR 수행 (file_path 사용)
+        texts = perform_naver_ocr(file_path)
 
-            # EasyOCR을 사용하여 텍스트 추출
-            reader = easyocr.Reader(['ko', 'en'])  # 한국어, 영어 지원
-            results = reader.readtext(preprocessed_image)
+        # 품목 후보 리스트
+        items = texts
 
-            # 결과 처리 (추출된 텍스트를 웹 페이지에 표시)
-            extracted_text = ""
-            for (bbox, text, prob) in results:
-                extracted_text += text + " "
+        return render(request, 'select_items.html', {'items': items, 'receipt_id': receipt.id})
 
-            return render(request, 'ocr_result.html',
-                          {'extracted_text': extracted_text, 'captured_image': image_data_encoded})
+    return render(request, 'upload_receipt.html')
 
-        except Exception as e:
-            print(f"오류 발생: {e}")  # 오류 로깅
-            return render(request, 'ocr_result.html', {'extracted_text': 'OCR 처리 실패', 'captured_image': None})
+from django.shortcuts import redirect
 
-    return render(request, 'upload_form.html')
+@login_required
+def save_selected_items(request):
+    if request.method == 'POST':
+        receipt_id = request.POST.get('receipt_id')
+        selected_items = request.POST.getlist('selected_items')
+        if not receipt_id or not selected_items:
+            return redirect('upload_receipt')
 
+        receipt = Receipt.objects.get(id=receipt_id, user=request.user)
+
+        for name in selected_items:
+            Item.objects.create(receipt=receipt, name=name)
+
+        return redirect('item_list')
+
+@login_required
+def item_list(request):
+    items = Item.objects.filter(receipt__user=request.user).order_by('-created_at')
+    return render(request, 'item_list.html', {'items': items})
+
+from django.contrib.auth.forms import UserCreationForm
+from django.shortcuts import render, redirect
+
+def signup(request):
+    if request.method == "POST":
+        form = UserCreationForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('login')  # 로그인 페이지로 이동
+    else:
+        form = UserCreationForm()
+    return render(request, 'registration/signup.html', {'form': form})
 
 def home(request):
     return render(request, 'home.html')

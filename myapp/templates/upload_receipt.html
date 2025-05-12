@@ -1,0 +1,26 @@
+<h2>영수증 촬영 및 업로드</h2>
+<video id="video" width="320" height="240" autoplay></video>
+<button id="capture">촬영</button>
+<canvas id="canvas" width="320" height="240" style="display:none;"></canvas>
+<form id="photoForm" method="post">
+  {% csrf_token %}
+  <input type="hidden" name="image_data" id="imageInput">
+  <button type="submit">서버로 전송</button>
+</form>
+<script>
+const video = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+const captureBtn = document.getElementById('capture');
+const imageInput = document.getElementById('imageInput');
+
+navigator.mediaDevices.getUserMedia({ video: true })
+  .then(stream => { video.srcObject = stream; });
+
+captureBtn.onclick = function(e) {
+  e.preventDefault();
+  canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+  const dataUrl = canvas.toDataURL('image/png');
+  imageInput.value = dataUrl;
+  alert("촬영이 완료되었습니다. '서버로 전송' 버튼을 눌러주세요.");
+};
+</script>

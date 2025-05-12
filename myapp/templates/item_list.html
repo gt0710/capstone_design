@@ -1,0 +1,10 @@
+<h2>저장된 품목 목록</h2>
+<ul>
+  {% for item in items %}
+    <li>{{ item.name }} ({{ item.created_at|date:"Y-m-d H:i" }})</li>
+  {% empty %}
+    <li>저장된 품목이 없습니다.</li>
+  {% endfor %}
+</ul>
+<a href="{% url 'upload_receipt' %}">영수증 업로드</a>
+<a href="{% url 'home' %}">처음으로</a>

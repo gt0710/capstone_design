@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import ExtractedText
-# Register your models here.
+from .models import Receipt, Item
 
-admin.site.register(ExtractedText)
+admin.site.register(Receipt)
+admin.site.register(Item)
