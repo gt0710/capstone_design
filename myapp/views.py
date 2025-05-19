@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
 from .models import Receipt, Item
-from .utils import perform_naver_ocr
+from .utils import perform_naver_ocr, is_probable_item
 
 @login_required
 def upload_receipt(request):
@@ -15,8 +15,7 @@ def upload_receipt(request):
         file_path = receipt.image.path
 
         texts = perform_naver_ocr(file_path)
-        items = texts
-
+        items = [line for line in texts if is_probable_item(line)]
         return render(request, 'select_items.html', {'items': items, 'receipt_id': receipt.id})
 
     return render(request, 'upload_receipt.html')

@@ -3,7 +3,8 @@ import uuid
 import time
 import json
 import cv2
-from django.conf import settings  # 추가
+from django.conf import settings
+import re
 
 def preprocess_image(image_path):
     img = cv2.imread(image_path)
@@ -13,8 +14,8 @@ def preprocess_image(image_path):
 
 def perform_naver_ocr(image_path):
     """네이버 CLOVA OCR API를 사용한 OCR 함수"""
-    api_url = settings.NAVER_OCR_API_URL         # settings에서 불러오기
-    secret_key = settings.NAVER_OCR_SECRET_KEY   # settings에서 불러오기
+    api_url = settings.NAVER_OCR_API_URL
+    secret_key = settings.NAVER_OCR_SECRET_KEY
 
     request_json = {
         'images': [
@@ -45,3 +46,20 @@ def perform_naver_ocr(image_path):
         for field in result['images'][0]['fields']:
             texts.append(field['inferText'])
     return texts
+
+def is_probable_item(line):
+    # 너무 짧은 줄 제외
+    if len(line.strip()) < 2:
+        return False
+    # '합계', '카드', '현금' 등 비품목 키워드만 제외
+    exclude_keywords = [
+        "합계", "총액", "카드", "현금", "일시", "사업자", "대표자", "전화", "승인", "No", "잔액",
+        "금액", "부가세", "면세", "점포", "영수증", "매장", "고객", "포인트", "결제", "발급"
+    ]
+    for keyword in exclude_keywords:
+        if keyword in line:
+            return False
+    # 한글/영문+숫자(가격)가 모두 있는 줄
+    if re.search(r"[가-힣A-Za-z]+.*\d+", line):
+        return True
+    return False
