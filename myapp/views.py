@@ -1,8 +1,11 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.forms import UserCreationForm
 from .models import Receipt, Item
 from .utils import perform_naver_ocr, is_probable_item
+
+# DRF import
+from rest_framework import generics, permissions
+from .serializers import UserSignupSerializer
 
 @login_required
 def upload_receipt(request):
@@ -42,12 +45,7 @@ def item_list(request):
 def home(request):
     return render(request, 'home.html')
 
-def signup(request):
-    if request.method == "POST":
-        form = UserCreationForm(request.POST)
-        if form.is_valid():
-            form.save()
-            return redirect('login')
-    else:
-        form = UserCreationForm()
-    return render(request, 'registration/signup.html', {'form': form})
+# DRF 회원가입 API 뷰
+class UserSignupView(generics.CreateAPIView):
+    serializer_class = UserSignupSerializer
+    permission_classes = [permissions.AllowAny]
