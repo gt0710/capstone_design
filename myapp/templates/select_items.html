@@ -1,12 +1,36 @@
 <h2>저장할 품목 선택</h2>
-<form method="post" action="{% url 'save_selected_items' %}">
-  {% csrf_token %}
-  <input type="hidden" name="receipt_id" value="{{ receipt_id }}">
-  {% for item in items %}
-    <label>
-      <input type="checkbox" name="selected_items" value="{{ item }}">
-      {{ item }}
-    </label><br>
-  {% endfor %}
+<form id="select-items-form">
+  <div id="items-area"></div>
   <button type="submit">선택한 품목 저장</button>
 </form>
+<div id="save-result"></div>
+<script>
+const receiptId = 1; // 실제로는 URL 파라미터 등에서 받아옴
+fetch(`/myapp/api/ocr-items/?receipt_id=${receiptId}`, {
+  headers: { 'Authorization': 'Token ' + localStorage.getItem('token') }
+})
+.then(res => res.json())
+.then(items => {
+  document.getElementById('items-area').innerHTML =
+    items.map(item =>
+      `<label><input type="checkbox" name="selected_items" value="${item}">${item}</label><br>`
+    ).join('');
+});
+
+document.getElementById('select-items-form').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const selected = Array.from(document.querySelectorAll('input[name="selected_items"]:checked'))
+    .map(cb => cb.value);
+  const response = await fetch('/myapp/api/save-items/', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Token ' + localStorage.getItem('token')
+    },
+    body: JSON.stringify({ receipt_id: receiptId, selected_items: selected })
+  });
+  const data = await response.json();
+  document.getElementById('save-result').textContent =
+    response.ok ? '저장 성공!' : '저장 실패: ' + JSON.stringify(data);
+});
+</script>

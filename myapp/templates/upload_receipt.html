@@ -1,9 +1,37 @@
-<h2>영수증 파일 업로드</h2>
-<form method="post" enctype="multipart/form-data">
-  {% csrf_token %}
-  <input type="file" name="image" accept="image/*" required>
+<h2>영수증 파일 업로드 (DRF API)</h2>
+<form id="uploadForm">
+  <input type="file" id="image" name="image" accept="image/*" required>
   <button type="submit">업로드</button>
 </form>
-{% if error %}
-  <p style="color: red;">{{ error }}</p>
-{% endif %}
+<div id="result"></div>
+<script>
+document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const formData = new FormData();
+  const fileInput = document.getElementById('image');
+  if (fileInput.files.length === 0) {
+    document.getElementById('result').innerHTML = '<span style="color:red;">파일을 선택하세요.</span>';
+    return;
+  }
+  formData.append('image', fileInput.files[0]);
+
+  const response = await fetch('/myapp/api/receipt-upload/', {
+    method: 'POST',
+    // 'Content-Type'은 자동으로 설정됨 (FormData 사용시)
+    body: formData,
+    // 인증이 필요하면 헤더에 토큰 추가
+    // headers: { 'Authorization': 'Token xxx' }
+  });
+
+  const data = await response.json();
+  if (response.ok) {
+    document.getElementById('result').innerHTML = `<b style="color:green;">업로드 성공! 파일: ${data.image}</b>`;
+  } else {
+    let msg = '';
+    for (const key in data) {
+      msg += `${key}: ${data[key].join(', ')}<br>`;
+    }
+    document.getElementById('result').innerHTML = `<b style="color:red;">업로드 실패:<br>${msg}</b>`;
+  }
+});
+</script>

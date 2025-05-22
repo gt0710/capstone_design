@@ -1,10 +1,19 @@
 <h2>저장된 품목 목록</h2>
-<ul>
-  {% for item in items %}
-    <li>{{ item.name }} ({{ item.created_at|date:"Y-m-d H:i" }})</li>
-  {% empty %}
-    <li>저장된 품목이 없습니다.</li>
-  {% endfor %}
-</ul>
-<a href="{% url 'upload_receipt' %}">영수증 업로드</a>
-<a href="{% url 'home' %}">처음으로</a>
+<ul id="item-list"></ul>
+<script>
+const token = localStorage.getItem('token');
+fetch('/myapp/api/items/', {
+  headers: { 'Authorization': 'Token ' + token }
+})
+.then(res => res.json())
+.then(items => {
+  const ul = document.getElementById('item-list');
+  if (items.length === 0) {
+    ul.innerHTML = '<li>저장된 품목이 없습니다.</li>';
+  } else {
+    ul.innerHTML = items.map(item =>
+      `<li>${item.name} (${item.created_at.slice(0,16).replace('T',' ')})</li>`
+    ).join('');
+  }
+});
+</script>

@@ -1,16 +1,45 @@
-{% if user.is_authenticated %}
-  <p>안녕하세요, {{ user.username }}!</p>
-  <a href="{% url 'upload_receipt' %}">영수증 업로드</a> |
-  <a href="{% url 'item_list' %}">저장된 품목 보기</a> |
-  <form action="{% url 'logout' %}" method="post" style="display:inline;">
-  {% csrf_token %}
-  <button type="submit" style="background:none; border:none; color:blue; text-decoration:underline; cursor:pointer;">
-    로그아웃
-  </button>
-</form>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>홈</title>
+</head>
+<body>
+  <div id="user-area"></div>
+  <div id="menu-area"></div>
+  <script>
+    // 예시: localStorage에 토큰이 있으면 로그인 상태로 간주
+    const token = localStorage.getItem('token');
+    const userArea = document.getElementById('user-area');
+    const menuArea = document.getElementById('menu-area');
 
-{% else %}
-  <p>로그인이 필요합니다.</p>
-  <a href="{% url 'login' %}">로그인</a> |
-  <a href="{% url 'api_signup' %}">회원가입</a>
-{% endif %}
+    if (token) {
+      // 로그인 상태: 사용자 정보 API로 받아오기 (예시)
+      fetch('/myapp/api/me/', {
+        headers: { 'Authorization': 'Token ' + token }
+      })
+      .then(res => res.json())
+      .then(user => {
+        userArea.innerHTML = `<p>안녕하세요, ${user.username}!</p>`;
+        menuArea.innerHTML = `
+          <a href="/upload-receipt.html">영수증 업로드</a> |
+          <a href="/item-list.html">저장된 품목 보기</a> |
+          <button onclick="logout()">로그아웃</button>
+        `;
+      });
+    } else {
+      // 비로그인 상태
+      userArea.innerHTML = `<p>로그인이 필요합니다.</p>`;
+      menuArea.innerHTML = `
+        <a href="/login.html">로그인</a> |
+        <a href="/signup.html">회원가입</a>
+      `;
+    }
+
+    function logout() {
+      localStorage.removeItem('token');
+      window.location.reload();
+    }
+  </script>
+</body>
+</html>

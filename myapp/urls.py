@@ -5,8 +5,11 @@ from django.urls import path, include
 
 urlpatterns = [
     path('', views.home, name='home'),
-    path('upload/', views.upload_receipt, name='upload_receipt'),
-    path('save_items/', views.save_selected_items, name='save_selected_items'),
+    path('api/save_items/', views.SaveSelectedItemsAPIView.as_view(), name='api_save_items'),
     path('items/', views.item_list, name='item_list'),
-    path('api/signup/', views.UserSignupView.as_view(), name='api_signup'),
+    path('api_signup/', views.UserSignupView.as_view(), name='api_signup'),
+    path('api/login/', views.LoginView.as_view(), name='api_login'),
+    path('api/receipt-upload/', views.ReceiptUploadAPIView.as_view(), name='api_receipt_upload'),
+    path('api/items/', views.ItemListAPIView.as_view(), name='api_items'),
+    path('api/ocr-result/', views.OCRResultAPIView.as_view(), name='api_ocr_result'),
 ]

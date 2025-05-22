@@ -19,11 +19,13 @@ from django.contrib import admin
 from django.urls import include, path
 from django.conf import settings
 from django.conf.urls.static import static
+from myapp.views import LoginView
 from myapp import views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('myapp/', include('myapp.urls')),  # myapp URL 포함
     path('accounts/', include('django.contrib.auth.urls')),
+    path('api/login/', LoginView.as_view(), name='login'),
     path('', views.home, name='home'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

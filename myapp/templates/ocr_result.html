@@ -1,19 +1,15 @@
-<!-- myapp/templates/ocr_result.html -->
-
-<!DOCTYPE html>
-<html>
-<head>
-    <title>OCR Result</title>
-</head>
-<body>
-    <h1>OCR 결과</h1>
-    <p>{{ extracted_text }}</p>
-
-    <h2>Captured Image</h2>
-    {% if captured_image %}
-        <img src="{{ captured_image }}" alt="Captured Image">
-    {% else %}
-        <p>No image captured.</p>
-    {% endif %}
-</body>
-</html>
+<h1>OCR 결과</h1>
+<p id="ocr-text"></p>
+<img id="ocr-image" style="max-width:300px;">
+<script>
+fetch('/myapp/api/ocr-result/?receipt_id=1', {
+  headers: { 'Authorization': 'Token ' + localStorage.getItem('token') }
+})
+.then(res => res.json())
+.then(data => {
+  document.getElementById('ocr-text').textContent = data.extracted_text;
+  if (data.captured_image) {
+    document.getElementById('ocr-image').src = data.captured_image;
+  }
+});
+</script>

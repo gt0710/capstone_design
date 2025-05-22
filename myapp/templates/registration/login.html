@@ -1,6 +1,37 @@
-<h2>로그인</h2>
-<form method="post">
-  {% csrf_token %}
-  {{ form.as_p }}
-  <button type="submit">로그인</button>
-</form>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>로그인</title>
+</head>
+<body>
+  <h2>로그인</h2>
+  <form id="loginForm">
+    <label>아이디: <input type="text" id="username" required></label><br>
+    <label>비밀번호: <input type="password" id="password" required></label><br>
+    <button type="submit">로그인</button>
+  </form>
+  <div id="login-result"></div>
+  <script>
+    document.getElementById('loginForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+
+      const response = await fetch('/myapp/api/login/', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({username, password})
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        document.getElementById('login-result').innerHTML = `<b style="color:green;">로그인 성공! 토큰: ${data.token}</b>`;
+        // window.location.href = '/myapp/'; // 성공시 홈으로 이동 (선택)
+      } else {
+        document.getElementById('login-result').innerHTML = `<b style="color:red;">로그인 실패: ${JSON.stringify(data)}</b>`;
+      }
+    });
+  </script>
+</body>
+</html>
