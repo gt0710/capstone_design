@@ -5,6 +5,7 @@ import json
 import cv2
 from django.conf import settings
 import re
+import os
 
 def preprocess_image(image_path):
     img = cv2.imread(image_path)
@@ -63,3 +64,36 @@ def is_probable_item(line):
     if re.search(r"[가-힣A-Za-z]+.*\d+", line):
         return True
     return False
+
+TOGETHER_API_KEY = os.environ.get("TOGETHER_API_KEY")
+TOGETHER_API_URL = "https://api.together.xyz/v1/chat/completions"
+
+def build_meal_prompt(items):
+    return (
+        "다음은 사용자가 가지고 있는 식재료 목록입니다.\n\n"
+        f"{', '.join(items)}\n\n"
+        "이 재료들만 사용해서 만들 수 있는 한식 메뉴를 2~3가지 추천해 주세요. "
+        "각 메뉴별로 간단한 요리 방법도 한글로 2~3줄 이내로 설명해 주세요. "
+        "출처 번호나 [1], [2] 등은 포함하지 말고, 오직 한국어로만 작성해 주세요."
+    )
+
+def recommend_meal_with_ai(items):
+    prompt = build_meal_prompt(items)
+    headers = {
+        "Authorization": f"Bearer {TOGETHER_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",  # 원하는 together.ai 모델명
+        "messages": [
+            {"role": "system", "content": "당신은 요리 전문가입니다."},
+            {"role": "user", "content": prompt}
+        ],
+        "max_tokens": 512,
+        "temperature": 0.7
+    }
+    response = requests.post(TOGETHER_API_URL, headers=headers, json=data)
+    if response.status_code == 200:
+        return response.json()["choices"][0]["message"]["content"]
+    else:
+        return "추천 결과를 가져오지 못했습니다."
