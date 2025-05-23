@@ -27,5 +27,4 @@ urlpatterns = [
     path('myapp/', include('myapp.urls')),  # myapp URL 포함
     path('accounts/', include('django.contrib.auth.urls')),
     path('api/login/', LoginView.as_view(), name='login'),
-    path('', views.home, name='home'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
