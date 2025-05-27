@@ -24,7 +24,7 @@ NAVER_OCR_SECRET_KEY = os.getenv("NAVER_OCR_SECRET_KEY")
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-&rojt@jlzqc8io#)=bw_4a!s2=khn65qs$xm1a5*a+p&u5(ur0"
+SECRET_KEY = os.getenv("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
