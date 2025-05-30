@@ -1,102 +1,55 @@
-import requests
-import uuid
-import time
-import json
-import cv2
-from django.conf import settings
-import re
 import os
+from dotenv import load_dotenv
+import google.generativeai as genai
+from PIL import Image
 
-def preprocess_image(image_path):
-    img = cv2.imread(image_path)
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
-    return thresh
+# 1. 환경 변수에서 API 키 로드 및 Gemini 초기화 (최상단에서 한 번만)
+load_dotenv()
+api_key = os.getenv("GEMINI_API_KEY")
+genai.configure(api_key=api_key)
 
-def perform_naver_ocr(image_path):
-    """네이버 CLOVA OCR API를 사용한 OCR 함수"""
-    api_url = settings.NAVER_OCR_API_URL
-    secret_key = settings.NAVER_OCR_SECRET_KEY
-
-    request_json = {
-        'images': [
-            {
-                'format': 'jpg',
-                'name': 'demo'
-            }
-        ],
-        'requestId': str(uuid.uuid4()),
-        'version': 'V2',
-        'timestamp': int(round(time.time() * 1000))
-    }
-
-    payload = {'message': json.dumps(request_json).encode('UTF-8')}
-    files = [
-        ('file', open(image_path, 'rb'))
-    ]
-    headers = {
-        'X-OCR-SECRET': secret_key
-    }
-
-    response = requests.post(api_url, headers=headers, data=payload, files=files)
-    result = response.json()
-
-    # 텍스트 추출
-    texts = []
-    if 'images' in result and 'fields' in result['images'][0]:
-        for field in result['images'][0]['fields']:
-            texts.append(field['inferText'])
-    return texts
-
-def is_probable_item(line):
-    # 너무 짧은 줄 제외
-    if len(line.strip()) < 2:
-        return False
-    # '합계', '카드', '현금' 등 비품목 키워드만 제외
-    exclude_keywords = [
-        "합계", "총액", "카드", "현금", "일시", "사업자", "대표자", "전화", "승인", "No", "잔액",
-        "금액", "부가세", "면세", "점포", "영수증", "매장", "고객", "포인트", "결제", "발급"
-    ]
-    for keyword in exclude_keywords:
-        if keyword in line:
-            return False
-    # 한글/영문+숫자(가격)가 모두 있는 줄
-    if re.search(r"[가-힣A-Za-z]+.*\d+", line):
-        return True
-    return False
-
-TOGETHER_API_KEY = os.environ.get("TOGETHER_API_KEY")
-TOGETHER_API_URL = "https://api.together.xyz/v1/chat/completions"
+def extract_items_from_receipt_with_gemini(image_path):
+    """
+    영수증 이미지에서 품목명과 수량을 추출하는 함수 (Gemini 1.5 Pro 사용)
+    """
+    img = Image.open(image_path)
+    prompt = (
+        "아래 이미지는 영수증입니다.\n"
+        "이 영수증에서 구매한 품목명과 수량만 한글로 추출해 주세요.\n"
+        "각 품목은 '품목명 수량' 형식으로, 줄바꿈(엔터)으로 구분해서 여러 줄로 출력해 주세요.\n"
+        "예시:\n사과 2개\n바나나 1개\n포도 3개\n"
+        "출처 번호, 광고 문구 등은 제외하고 오직 품목명과 수량만 뽑아주세요."
+    )
+    model = genai.GenerativeModel("gemini-1.5-pro")
+    try:
+        response = model.generate_content([prompt, img])
+        return response.text if hasattr(response, "text") else ""
+    except Exception as e:
+        return f"에러 발생: {e}"
 
 def build_meal_prompt(items):
+    """
+    사용자가 가진 식재료 목록으로 만들 수 있는 요리법 추천 프롬프트 생성
+    """
     return (
-        "다음은 사용자가 가지고 있는 식재료 목록입니다."
-        f"{', '.join(items)}"
-        "이 재료들만 사용해서 만들 수 있는 요리를 2~3가지 추천해 주세요. "
-        "각 메뉴별로 간단한 요리 방법도 한글로 2~3줄 이내로 설명해 주세요. "
-        "출처 번호나 [1], [2] 등은 포함하지 말고, 오직 한국어로만 작성해 주세요."
-        "같은 문장 반복 없이 각 메뉴에 맞게 작성해 주세요."
-        "각 메뉴는 실제 줄바꿈(Enter)으로 구분해서 여러 줄로 출력해 주세요. "
+        "다음은 사용자가 가지고 있는 식재료 목록입니다.\n\n"
+        f"{', '.join(items)}\n\n"
+        "이 재료들만 사용해서 만들 수 있는 요리를 2~3가지 추천해 주세요.\n"
+        "각 메뉴별로 간단한 요리 방법도 한글로 2~3줄 이내로 설명해 주세요.\n"
+        "출처 번호나 [1], [2] 등은 포함하지 말고, 오직 한국어로만 작성해 주세요.\n"
+        "같은 문장 반복 없이 각 메뉴에 맞게 작성해 주세요.\n"
+        "각 메뉴는 실제 줄바꿈(Enter)으로 구분해서 여러 줄로 출력해 주세요.\n"
         "'\\n'이라는 문자를 출력하지 말고, 실제로 줄을 바꿔서 작성해 주세요."
     )
 
 def recommend_meal_with_ai(items):
+    """
+    식재료 목록으로 요리법을 추천하는 함수 (Gemini 1.5 Pro 사용)
+    """
     prompt = build_meal_prompt(items)
-    headers = {
-        "Authorization": f"Bearer {TOGETHER_API_KEY}",
-        "Content-Type": "application/json"
-    }
-    data = {
-        "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",  # 원하는 together.ai 모델명
-        "messages": [
-            {"role": "system", "content": "당신은 요리 전문가입니다."},
-            {"role": "user", "content": prompt}
-        ],
-        "max_tokens": 512,
-        "temperature": 0.7
-    }
-    response = requests.post(TOGETHER_API_URL, headers=headers, json=data)
-    if response.status_code == 200:
-        return response.json()["choices"][0]["message"]["content"]
-    else:
-        return "추천 결과를 가져오지 못했습니다."
+    model = genai.GenerativeModel("gemini-1.5-pro")
+    try:
+        response = model.generate_content(prompt)
+        return response.text if hasattr(response, "text") else "추천 결과를 가져오지 못했습니다."
+    except Exception as e:
+        return f"에러 발생: {e}"
