@@ -17,8 +17,7 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 load_dotenv()
-NAVER_OCR_API_URL = os.getenv("NAVER_OCR_API_URL")
-NAVER_OCR_SECRET_KEY = os.getenv("NAVER_OCR_SECRET_KEY")
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
