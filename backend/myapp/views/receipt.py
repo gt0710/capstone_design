@@ -5,7 +5,7 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from myapp.models import Receipt
 from myapp.serializers import ReceiptUploadSerializer
 from myapp.utils import extract_items_from_receipt_with_gemini
-import json
+
 
 class ReceiptUploadAPIView(APIView):
     parser_classes = [MultiPartParser, FormParser]
